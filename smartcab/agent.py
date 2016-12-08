@@ -8,7 +8,7 @@ class LearningAgent(Agent):
     """ An agent that learns to drive in the Smartcab world.
         This is the object you will be modifying. """ 
 
-    def __init__(self, env, learning=False, epsilon=1.0, alpha=0.5):
+    def __init__(self, env, learning=False, epsilon=1.0, alpha=0.5, gamma=0.0, decay_r=0.05):
         super(LearningAgent, self).__init__(env)     # Set the agent in the evironment 
         self.planner = RoutePlanner(self.env, self)  # Create a route planner
         self.valid_actions = self.env.valid_actions  # The set of valid actions
@@ -23,14 +23,11 @@ class LearningAgent(Agent):
         ## TO DO ##
         ###########
         # Set any additional class parameters as needed
-        self.no_trials=0 # start with 0 no of trials.  This will be incremented by 1 in reset function
+        self.gamma = gamma # for this project, no future reward is considered so this is by default set to 0.0
+        self.decay_r = decay_r # rate of decay for any decay functions
         self.decay_c = epsilon # setup a constant to be used for linear decay function
-        #self.rate_of_decay = 0.05 # rate of decay for linear decay function to force 20 training trials
-        #self.rate_of_decay = 0.01 # rate of decay for linear decay function to force 100 training trials
-        #self.rate_of_decay = 0.005 # rate of decay for linear decay function to force 200 training trials
-        self.rate_of_decay = 0.0025 # rate of decay for linear decay function to force 400 training trials
-
-
+        self.no_trials = 0 # start with 0 no of trials.  This will be incremented by 1 in reset function
+        
     def reset(self, destination=None, testing=False):
         """ The reset function is called at the beginning of each trial.
             'testing' is set to True if testing trials are being used
@@ -53,13 +50,13 @@ class LearningAgent(Agent):
             self.alpha=0
         else:
             # using decay function from note for initial Q-Learning
-            #self.epsilon=self.epsilon-0.05 # used in initial Q-Learning
+            #self.epsilon=self.epsilon-self.decay_r # used in initial Q-Learning
             
             # using below decay function to optimize Q-Learning
             #self.epsilon = 1/(float(self.no_trials**2)) # tried this also but result is not good D and F respectively
             
             # using linear decay function I've learned from the web
-            self.epsilon = self.decay_c - (self.rate_of_decay*self.no_trials)
+            self.epsilon = self.decay_c - (self.decay_r*self.no_trials)
             
          
         return None
@@ -121,8 +118,7 @@ class LearningAgent(Agent):
                 self.Q[state] = dict() # create a dictionary for that state
                 for action in self.valid_actions: # go through each valid action and set Q-Value to 0.0
                     self.Q[state][action] = 0.0
-                    #self.Q[state][action] = 50.0
-
+                   
         return
 
 
@@ -174,10 +170,14 @@ class LearningAgent(Agent):
             current_Q = self.Q[state][action] # current Q-value of current state
             next_State = self.build_state() # get next state
             self.createQ(next_State) # build the next Q entry for next state if doesnt exist
-            next_maxQ = self.get_maxQ(next_State)
+            
+            #next_maxQ = self.get_maxQ(next_State) # we don't use gamma so this is comment out per feedback from reviewer
             
             # update current state/action with new Q-value based on value iteration update rule below
-            self.Q[state][action] = current_Q + self.alpha * (reward + next_maxQ - current_Q)
+            # For this project, there is no future reward consideration so this one is commmented out
+            #self.Q[state][action] = current_Q + self.alpha * (reward + self.gamma*next_maxQ - current_Q) - 
+            
+            self.Q[state][action] = current_Q + self.alpha * (reward - current_Q) # immediate reward only
             
 
         return
@@ -215,21 +215,21 @@ def run():
     #   learning   - set to True to force the driving agent to use Q-learning
     #    * epsilon - continuous value for the exploration factor, default is 1
     #    * alpha   - continuous value for the learning rate, default is 0.5
-    #agent = env.create_agent(LearningAgent, learning=True, epsilon=1.0, alpha=0.5) # parameters used in initial Q-Learning
-    agent = env.create_agent(LearningAgent, learning=True, epsilon=1.0, alpha=0.1)
-    #agent = env.create_agent(LearningAgent, learning=True, epsilon=1.0, alpha=0.2)
-    #agent = env.create_agent(LearningAgent, learning=True, epsilon=1.0, alpha=0.3)
-    #agent = env.create_agent(LearningAgent, learning=True, epsilon=1.0, alpha=0.4)
-    #agent = env.create_agent(LearningAgent, learning=True, epsilon=1.0, alpha=0.5)
+    #agent = env.create_agent(LearningAgent, learning=True, epsilon=1.0, alpha=0.5, gamma=0.0, decay_r=0.05) #initial Q-Learning
+    #agent = env.create_agent(LearningAgent, learning=True, epsilon=1.0, alpha=0.1) # using 1/t^2 decay function
+    #agent = env.create_agent(LearningAgent, learning=True, epsilon=1.0, alpha=0.1, gamma=0.0, decay_r=0.01) # 100 trials
+    #agent = env.create_agent(LearningAgent, learning=True, epsilon=1.0, alpha=0.1, gamma=0.0, decay_r=0.005) # 200 trials
+    #agent = env.create_agent(LearningAgent, learning=True, epsilon=1.0, alpha=0.1, gamma=0.0, decay_r=0.0025) # 400 trials
+    agent = env.create_agent(LearningAgent, learning=True, epsilon=1.0, alpha=0.2, gamma=0.0, decay_r=0.0025) # 400 trials
+   
     
     ##############
     # Follow the driving agent
     # Flags: 
     #   enforce_deadline - set to True to enforce a deadline metri
     
-    #env.set_primary_agent(agent, enforce_deadline = True) # parameters used in initial Q-Learning
-    env.set_primary_agent(agent, enforce_deadline = False) # don't enforce deadline
-
+    env.set_primary_agent(agent, enforce_deadline = True)
+   
     ##############
     # Create the simulation
     # Flags:
@@ -248,9 +248,8 @@ def run():
     #   n_test     - discrete number of testing trials to perform, default is 0
     
     #sim.run(tolerance=0.05, n_test=10) # parameters used in initial Q-Learning
-    #sim.run(tolerance=0.01, n_test=30)
-    sim.run(tolerance=0.01, n_test=50)
     #sim.run(tolerance=0.01, n_test=10)
+    sim.run(tolerance=0.01, n_test=50)
     
 
 
