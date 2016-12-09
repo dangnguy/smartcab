@@ -13108,7 +13108,7 @@ I would say that waypoint, light, and oncoming are most relevant features availa
 <p>Below are features I thought are not relevant based on my observation.</p>
 <ul>
 <li><strong><em>input - right</em></strong>: This feature is not relevant.  Smartcab does not need to yield for this vehicle when making a legal right turn.  </li>
-<li><strong><em>deadline</em></strong>: Earlier I misunderstood and thought this was the same as enforce_deadline.  Reviewer correctly pointed this out to me.  At first, deadline seems like one that is relevant (for Reliability) because it maintains number of actions remaining for Smartcab to reach its destination before running out of time.  However, looking through the codes, the agent uses next_waypoint (defined in planner.py) to plan its next action.  In this function, it does not take into consideration how many more remaining actions (deadline) left before running out of time.  Thus, this is not relevant for learning.</li>
+<li><strong><em>deadline</em></strong>: Earlier I misunderstood and thought this was the same as enforce_deadline.  Reviewer correctly pointed this out to me.  At first, deadline seems like one that is relevant (for Reliability) because it maintains number of actions remaining for Smartcab to reach its destination before running out of time.  However, the driving agent does not rely on deadline to get to its destination.  It relies on optimal learned policies (constructed through many training trials) to guide it to its destination.  In addition, including deadline can increase the size of State space by as many as 100 times (hard_time_limit).</li>
 </ul>
 
 </div>
@@ -16625,15 +16625,7 @@ When light is green, oncoming traffic is moving forward, and no car to the left,
 <li>left : -19.69</li>
 </ul>
 <p>Here, if the driving agent moves forward on green, the reward is a positive (forward: 1.85).  This is optimal as it is the same as next_waypoint.  If the driving agent moves right on green, the reward is positive (right: 0.43).  If the driving agent stops on green, the penalty is a negative (None: -4.93).  If the driving agent moves left on green with oncoming traffic moving forward, the penalty is a big negative (left: -19.69) as this will cause a major accident.</p>
-<p><strong>Examples of unexpected state:</strong></p>
-<p>('left', 'red', 'right', 'left')</p>
-<ul>
-<li>forward : -11.71</li>
-<li>right : 0.41</li>
-<li>None : 1.16</li>
-<li>left : 0.00</li>
-</ul>
-<p>Here, the light is red and the car the left is turning left, what I notice here is that left action (which is the same as next_waypoint) has no penalty (left : 0.00).  This should be a big penalty as the light is red.</p>
+<p>I've gone through all the states in 'sim_improved-learning.txt' and I am not able to identify an unexpected policy.  I believe all the learned policies from the driving agent are optimal.</p>
 
 </div>
 </div>
@@ -16665,8 +16657,8 @@ When light is green, oncoming traffic is moving forward, and no car to the left,
 <div class="inner_cell">
 <div class="text_cell_render border-box-sizing rendered_html">
 <p><strong>Answer:</strong></p>
-<p>The environment is a simple and perfect grid environment in which there is no pedestrians, no other obstacles. Streets go N/S and E/W.  There is no tracking of the distance to the destination or shortest path to destination at each intersection.  Traffic lights at each intersection are not fixed and change constantly.  Future reward will not benefit here because the driving agent cannot simply move to the next intersection with highest reward (i.e closer to destination, etc).  The driving agent has to obey traffic rules and can only take action where the light is green. This means that the action where the light is green may not the the right action toward bigger reward.</p>
-<p>As for the driving agent, its starting location and destination are randomly chosen for each run.  At each intersection, the driving agent has no knowledge of where it is or how close it is to its destination.  There is no incentive to "look ahead" and see if the next intersection gets its closer to its destination.  Thus, future reward will not benefit the driving agent in this perfect grid environment.</p>
+<p>The environment is a simple and perfect grid environment in which there is no pedestrians, no other obstacles. Streets go N/S and E/W.  States are not linked to specific intersections.  Without this linkage, at any given state, there is no concept as to how close it is to its destination.  Every state is the same as compared to its destination. By propagating bigger rewards toward states, which are closer to its destination, does not make sense.  Thus, future rewards will not work here.</p>
+<p>As for the driving agent, its starting location and destination are randomly chosen for each training trial. Even if states are linked to specific intersections, future rewards will not work here either.  The purpose of future rewards is to give rewards to states and associated actions, which get the driving agent closer to its goal (destination in this case). This will give incentive for driving agent to "look ahead".  With each training trial (and driving agent will need many), the driving agent will eventually learn all optimal policies. The issue here is that the destination (and starting location) is not fixed for each training trial.  This defeats the purpose of future rewards as future rewards are tied to specific goal (destination in this case).</p>
 
 </div>
 </div>
